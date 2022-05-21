@@ -105,3 +105,7 @@ Get specific order:
 Get all fills:
 
     coinbase_api:get_fills(Coinbase).
+
+## Storing Secret CB keys
+
+Use [git secret](https://git-secret.io/) tool for managing secret keys

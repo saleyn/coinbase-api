@@ -6,3 +6,6 @@ deps
 _build/
 log/
 rebar.lock
+.gitsecret/keys/random_seed
+!*.secret
+auth.key

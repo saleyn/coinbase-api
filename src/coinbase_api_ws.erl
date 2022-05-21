@@ -41,9 +41,15 @@ init([Callback]) ->
     URI            = application:get_env(App, uri,      ?WS_URI_SANDBOX),
     Channels       = application:get_env(App, channels, [<<"full">>]),
     {ok, Products} = application:get_env(App, products),
-    {ok, AuthFile} = application:get_env(App, auth_file),
-    {ok, AuthInfo} = file:read_file(AuthFile),
-    AuthData = re:split(AuthInfo, "([^= ]+)\s*=\s*(.+)\n", [trim, group]),
+    {ok, Secret}   =
+      case filelib:is_file("auth.key.secret") of
+        true ->
+          {ok, _}  = os:cmd("git secret cat auth.key.secret");
+        false ->
+          {ok, F}  = application:get_env(App, auth_file),
+          {ok, _}  = file:read_file(F)
+      end,
+    AuthData = re:split(Secret, "([^= ]+)\s*=\s*(.+)\n", [trim, group]),
     AuthList = [{K,V} || [_, K, V] <- AuthData],
     #{"CB-ACCESS-KEY"        := AuthKey,
       "CB-ACCESS-PASSPHRASE" := AuthPass,
