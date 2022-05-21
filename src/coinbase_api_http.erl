@@ -1,5 +1,5 @@
 -module(coinbase_api_http).
--compile([{parse_transform, lager_transform}]).
+-include_lib("kernel/include/logger.hrl").
 -include("include/records.hrl").
 -define(API_CALL_TIMEOUT, 30000).
 
@@ -132,11 +132,11 @@ parse_order_list(Binary) when is_binary(Binary) ->
     [ parse_order(Order) || Order <- OrderList ].
 
 encode_get_params(List) when is_list(List) ->
-    lager:info("Encoding param list ~p~n", [List]),
+    logger:info("Encoding param list ~p~n", [List]),
     encode_get_params(List, <<"">>).
 encode_get_params([], String) -> String;
 encode_get_params([{Opt, Val}|Tail], <<"">>) ->
-    lager:info("Adding option ~p:~p (Tail: ~p)~n", [Opt, Val, Tail]),
+    logger:info("Adding option ~p:~p (Tail: ~p)~n", [Opt, Val, Tail]),
     encode_get_params(
       Tail, <<"?", Opt/binary, "=", Val/binary>>
      );
@@ -167,7 +167,7 @@ get_orders(ServerPid, Params) ->
             {status, Value} -> [{<<"status">>, Value}]
         end,
     QueryString = encode_get_params(lists:flatten([Paginate|Status])),
-    lager:info("Query string: ~p~n", [QueryString]),
+    logger:info("Query string: ~p~n", [QueryString]),
     request(get_orders, ServerPid, <<"GET">>, <<"/orders", QueryString/binary>>).
 
 %% Get a single order by ID
@@ -327,7 +327,7 @@ api_request(#state{gun=Gun, key=Key, secret=Secret, passphrase=Passphrase}, Meth
         {error, timeout} ->
             timeout;
         Anything ->
-            lager:info("Got unknown response: ~p~n", [Anything]),
+            logger:info("Got unknown response: ~p~n", [Anything]),
             error
     end.
 
@@ -412,6 +412,6 @@ loop(State=#state{}) ->
         {gun_down, _, _, _, _, _} ->
             loop(State);
         Anything ->
-            lager:info("Got message: ~p~n", [Anything]),
+            logger:info("Got message: ~p~n", [Anything]),
             loop(State)
     end.

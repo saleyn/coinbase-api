@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 -include("include/records.hrl").
 
--compile([{parse_transform, lager_transform}]).
+-include_lib("kernel/include/logger.hrl").
 
 -define(WS_URI, "wss://ws-feed.gdax.com").
 
@@ -31,23 +31,23 @@ init([Callback]) ->
     {ok, State}.
 
 handle_call(Request, _From, State) ->
-    lager:info("Unexpected call ~p~n", [Request]),
+    logger:info("Unexpected call ~p~n", [Request]),
     {noreply, State}.
 
 handle_cast(reconnect, State) ->
     {ok, State1} = reconnect_websocket(State),
     {noreply, State1};
 handle_cast(Msg, State) ->
-    lager:info("Unexpected cast ~p~n", [Msg]),
+    logger:info("Unexpected cast ~p~n", [Msg]),
     {noreply, State}.
 
 handle_info({gun_ws, Gun, {close, Code, Reason}}, State) ->
-    lager:info("WS state -> closed: ~p: ~p~n", [Code, Reason]),
+    logger:info("WS state -> closed: ~p: ~p~n", [Code, Reason]),
     gun:close(Gun),
     gen_server:cast(self(), reconnect),
     {noreply, State};
 handle_info({gun_ws, Gun, close}, State) ->
-    lager:info("WS state -> closed"),
+    logger:info("WS state -> closed"),
     gun:close(Gun),
     gen_server:cast(self(), reconnect),
     {noreply, State};
@@ -57,7 +57,7 @@ handle_info({gun_ws, _Gun, Message}, State) ->
 handle_info({gun_up, _Gun, _Proto}, State) ->
     {noreply, State};
 handle_info({gun_down, Gun, _Proto, Reason, [], []}, State) ->
-    lager:info("Gun down (reason: ~p)~n", [Reason]),
+    logger:info("Gun down (reason: ~p)~n", [Reason]),
     gun:close(Gun),
     gen_server:cast(self(), reconnect),
     {noreply, State};
@@ -66,25 +66,24 @@ handle_info({gun_ws_upgrade, Gun, ok, _Headers}, State) ->
     {noreply, State};
 
 handle_info(Info, State) ->
-    lager:info("Unexpected info ~p~n", [Info]),
+    logger:info("Unexpected info ~p~n", [Info]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
     ok.
 
 code_change(OldVsn, State, _Extra) ->
-    lager:info("~p updated from vsn ~p", [?MODULE, OldVsn]),
+    logger:info("~p updated from vsn ~p", [?MODULE, OldVsn]),
     {ok, State}.
 
 
 %% Internal methods
 
 reconnect_websocket(State) ->
-    {ok, {wss, [], Host, 443, Fragment, []}} = http_uri:parse(
-        ?WS_URI, [{scheme_defaults, [{wss, 443}]}]
-    ),
+    {ok, #{scheme := "wss", host := Host, port := 443, path := Fragment}} =
+      url_string:parse(?WS_URI),
     {ok, Pid} = gun:open(Host, 443, #{protocols => [http]}),
-    StreamRef = gun:ws_upgrade(Pid, Fragment),
+    _StreamRef = gun:ws_upgrade(Pid, Fragment),
     {ok, State#state{gun=Pid}}.
 
 subscribe_message() ->
@@ -102,7 +101,7 @@ subscribe_message() ->
 
 send_ws_message(Gun, Message) ->
     JsonMessage = jsx:encode(Message),
-    lager:info("Sending: ~p~n", [JsonMessage]),
+    logger:info("Sending: ~p~n", [JsonMessage]),
     gun:ws_send(Gun, {text, JsonMessage}).
 
 handle_ws_json_message(State, {text, Message}) ->
@@ -115,7 +114,7 @@ handle_ws_json_message(State, {text, Message}) ->
         )
     ).
 
-handle_ws_message(State, undefined) ->
+handle_ws_message(_State, undefined) ->
     % Ignore messages that can't be parsed
     ok;
 handle_ws_message(State, Message) ->
@@ -143,5 +142,5 @@ parse_ws_message(<<"ticker">>, Message) ->
         best_ask=decimal:from_binary(proplists:get_value(<<"best_ask">>, Message))
     };
 parse_ws_message(Type, Message) ->
-    lager:info("Got unhandled message type '~s': ~p~n", [Type, Message]),
+    logger:info("Got unhandled message type '~s': ~p~n", [Type, Message]),
     undefined.

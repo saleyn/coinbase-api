@@ -7,9 +7,9 @@
                   kernel,
                   stdlib,
                   sasl,
+                  logger,
                   jsx,
                   gun,
-                  lager,
                   decimal
                  ]},
   {mod, { coinbase_api_app, []}},
